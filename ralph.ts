@@ -1146,7 +1146,6 @@ function ensureRalphConfig(options: { filterPlugins?: boolean; allowAllPermissio
       todoread: "allow",
       question: "allow",
       lsp: "allow",
-      external_directory: "allow",
     };
   }
 
@@ -1755,10 +1754,11 @@ interface FileSnapshot {
 
 async function captureFileSnapshot(): Promise<FileSnapshot> {
   const files = new Map<string, string>();
+  const cwd = process.cwd();
   try {
     // Get list of all tracked and modified files
-    const status = await $`git status --porcelain`.text();
-    const trackedFiles = await $`git ls-files`.text();
+    const status = await $`git status --porcelain`.cwd(cwd).text();
+    const trackedFiles = await $`git ls-files`.cwd(cwd).text();
 
     // Combine modified and tracked files
     const allFiles = new Set<string>();
@@ -1776,7 +1776,7 @@ async function captureFileSnapshot(): Promise<FileSnapshot> {
     // Get hash for each file (using git hash-object for content comparison)
     for (const file of allFiles) {
       try {
-        const hash = await $`git hash-object ${file} 2>/dev/null || stat -f '%m' ${file} 2>/dev/null || echo ''`.text();
+        const hash = await $`git hash-object ${file} 2>/dev/null || stat -f '%m' ${file} 2>/dev/null || echo ''`.cwd(cwd).text();
         files.set(file, hash.trim());
       } catch {
         // File may not exist, skip
@@ -2050,6 +2050,7 @@ async function runRalphLoop(): Promise<void> {
       // Run agent using spawn for better argument handling
       // stdin is inherited so users can respond to permission prompts if needed
       currentProc = Bun.spawn([agentConfig.command, ...cmdArgs], {
+        cwd: process.cwd(),
         env,
         stdin: "inherit",
         stdout: "pipe",
@@ -2307,10 +2308,11 @@ async function runRalphLoop(): Promise<void> {
       if (autoCommit) {
         try {
           // Check if there are changes to commit
-          const status = await $`git status --porcelain`.text();
+          const cwd = process.cwd();
+          const status = await $`git status --porcelain`.cwd(cwd).text();
           if (status.trim()) {
-            await $`git add -A`;
-            await $`git commit -m "Ralph iteration ${state.iteration}: work in progress"`.quiet();
+            await $`git add -A`.cwd(cwd);
+            await $`git commit -m "Ralph iteration ${state.iteration}: work in progress"`.cwd(cwd).quiet();
             console.log(`📝 Auto-committed changes`);
           }
         } catch {
