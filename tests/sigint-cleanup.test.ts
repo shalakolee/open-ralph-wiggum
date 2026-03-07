@@ -67,6 +67,14 @@ function spawnRalph() {
   };
 }
 
+async function waitForRalphReady(run: ReturnType<typeof spawnRalph>) {
+  await waitFor(
+    () => existsSync(statePath) && run.getStdout().includes("fixture agent ready"),
+    5000,
+    () => `Timed out waiting for Ralph startup.\nstdout:\n${run.getStdout()}\nstderr:\n${run.getStderr()}`,
+  );
+}
+
 describe("SIGINT cleanup", () => {
   beforeEach(() => {
     [statePath, questionsPath].forEach(path => {
@@ -115,7 +123,7 @@ describe("SIGINT cleanup", () => {
   it("clears state on SIGINT", async () => {
     const run = spawnRalph();
 
-    await wait(300);
+    await waitForRalphReady(run);
     run.proc.kill("SIGINT");
     await run.proc.exited;
     await run.done();
@@ -126,7 +134,7 @@ describe("SIGINT cleanup", () => {
   it("handles double SIGINT", async () => {
     const run = spawnRalph();
 
-    await wait(300);
+    await waitForRalphReady(run);
     run.proc.kill("SIGINT");
     await wait(50);
     run.proc.kill("SIGINT");
