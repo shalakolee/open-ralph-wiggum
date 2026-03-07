@@ -29,13 +29,13 @@ async function readStream(stream: ReadableStream<Uint8Array> | null, onText: (ch
   }
 }
 
-async function waitFor(check: () => boolean, timeoutMs: number, message: string) {
+async function waitFor(check: () => boolean, timeoutMs: number, message: () => string) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
     if (check()) return;
     await wait(50);
   }
-  throw new Error(message);
+  throw new Error(message());
 }
 
 function spawnRalph() {
@@ -94,7 +94,7 @@ describe("SIGINT cleanup", () => {
     await waitFor(
       () => run.getStdout().includes("⏳ working..."),
       5000,
-      `Timed out waiting for heartbeat.\nstdout:\n${run.getStdout()}\nstderr:\n${run.getStderr()}`,
+      () => `Timed out waiting for heartbeat.\nstdout:\n${run.getStdout()}\nstderr:\n${run.getStderr()}`,
     );
 
     run.proc.kill("SIGINT");
